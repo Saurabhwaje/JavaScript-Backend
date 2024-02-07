@@ -8,13 +8,14 @@ cloudinary.config({
 });
 
 const uploadCloudinary = async (filePath) => {
+  // console.log(">>>> ", filePath);
   try {
     if (!filePath) return null;
 
     // UPLOAD FILE ON CLOUD
     const response = await cloudinary.uploader.upload(filePath, {
       resource_type: "auto",
-      format: "auto",
+      // format: "auto",
     });
 
     console.log(">> ", response.url);
