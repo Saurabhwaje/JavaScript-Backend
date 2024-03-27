@@ -5,6 +5,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.models.js";
 import { uploadCloudinary } from "../utils/cloudinary.service.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import { Jwt } from "jsonwebtoken";
 // import {abc} from "../../public/temp"
 
 // generate access and refresh tokens
@@ -85,9 +86,9 @@ const registerUser = asyncHandler(async (req, res) => {
   console.log("User Object: ", user);
 
   // Retrieve the created user details from the database
-  const createdUser = await User
-    .findById(user._id)
-    .select("-password -refreshToken");
+  const createdUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
 
   // Throw an error if user creation fails
   if (!createdUser) {
@@ -102,7 +103,7 @@ const registerUser = asyncHandler(async (req, res) => {
 
 const loginUser = asyncHandler(async (req, res) => {
   const { email, username, password } = req.body;
-  if (!email || !username) {
+  if (!(email || username)) {
     throw new ApiError(400, "Username or Password is required");
   }
 
@@ -162,8 +163,53 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, {}, "User Logged Out"));
 });
 
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const incommingRefreshToken =
+    req.cookies.refreshToken || req.body.refreshToken;
+
+  if (incommingRefreshToken) {
+    throw new ApiError(401, "unauthorized request");
+  }
+
+  try {
+    const decodedToken = jwt.verify(
+      incommingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+
+    const user = User.findById(decodedToken?._id);
+
+    if (!user) {
+      throw new ApiError(401, "Invalid Refresh Token");
+    }
+
+    if (incommingRefreshToken !== user.refreshToken) {
+      throw new ApiError(401, "Invalid / Expired Refresh Token");
+    }
+
+    const { accessToken, genRefreshToken } =
+      await generateAccessAndRefreshToken(user._id);
+
+    const options = { httpOnly: true, secure: true };
+
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", genRefreshToken, options)
+      .json(
+        new ApiResponse(
+          (200,
+          { accessToken, refreshToken: genRefreshToken },
+          "Access Token Refreshed")
+        )
+      );
+  } catch (error) {
+    throw new ApiError(401, error?.message || "Invalid Refresh Token");
+  }
+});
+
 // Export the registerUser route handler
-export { registerUser, loginUser, logoutUser };
+export { registerUser, loginUser, logoutUser, refreshAccessToken };
 
 // get user details -> validations -> user is existing or not( based on email / username ) -> chaek for images, avatar
 // Upload item cloudinary, avatar ->
