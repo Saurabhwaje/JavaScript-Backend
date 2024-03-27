@@ -85,7 +85,7 @@ const registerUser = asyncHandler(async (req, res) => {
   console.log("User Object: ", user);
 
   // Retrieve the created user details from the database
-  const createdUser = await user
+  const createdUser = await User
     .findById(user._id)
     .select("-password -refreshToken");
 
