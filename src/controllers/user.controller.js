@@ -266,7 +266,7 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Avatar upload failed");
   }
 
-  await User.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
@@ -275,6 +275,34 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
     },
     { new: true } // Updated information will be returned
   ).select("-password");
+
+  return res.status(200).json(new ApiResponse(200, user, "avatar updated"));
+});
+
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+  const coverLocalLocalPath = req.file?.path;
+
+  if (!coverLocalLocalPath) {
+    new ApiError(400, "Cover Image file not found");
+  }
+
+  const coverimage = await uploadCloudinary(coverLocalLocalPath);
+
+  if (!coverimage.url) {
+    throw new ApiError(400, "Cover Image upload failed");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user?._id,
+    {
+      $set: {
+        coverimage: coverimage.url,
+      },
+    },
+    { new: true } // Updated information will be returned
+  ).select("-password");
+
+  return res.status(200).json(new ApiResponse(200, user, "coverimage updated"));
 });
 
 // Export the registerUser route handler
@@ -287,6 +315,7 @@ export {
   getCurrentUser,
   updateAccountDetails,
   updateUserAvatar,
+  updateUserCoverImage,
 };
 
 // get user details -> validations -> user is existing or not( based on email / username ) -> chaek for images, avatar
