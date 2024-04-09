@@ -237,7 +237,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     throw new ApiError(400, "All fields are required!");
   }
 
-  const user = User.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
@@ -305,6 +305,28 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
   return res.status(200).json(new ApiResponse(200, user, "coverimage updated"));
 });
 
+const getUserChannelProfile = asyncHandler(async (req, res) => {
+  const { username } = req.params;
+
+  if (!username?.trim()) {
+    throw new ApiError(400, "Username cannot be empty");
+  }
+
+  // User.find({ username});
+  const userChannel = await User.aggregate([
+    {
+      $match: { username: username?.toLowerCase() },
+    },
+    {
+      $lookup: { from: "subscriptions" },
+    },
+  ]);
+
+  if (userChannel) {
+    throw new ApiError(400, "User Channel not found");
+  }
+});
+
 // Export the registerUser route handler
 export {
   registerUser,
@@ -316,6 +338,7 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
+  getUserChannelProfile,
 };
 
 // get user details -> validations -> user is existing or not( based on email / username ) -> chaek for images, avatar
